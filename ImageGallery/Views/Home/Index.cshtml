@@ -1,0 +1,132 @@
+﻿
+<script type="module">
+    const REMOTE_HOST = 'http://167.71.69.158';
+    const PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+
+    async function fetchData() {
+        return await (await fetch(REMOTE_HOST + '/static/test.json')).json();
+    }
+
+    function renderTermsOfUse(paragraphs) {
+        paragraphs.sort((a, b) => a.index > b.index ? 1 : -1);
+
+        paragraphs.forEach((paragraph) => {
+            document.body.appendChild(createParagraph(paragraph));
+        });
+
+        document.body.appendChild(createButton("acceptButton", "Accept"));
+    }
+
+    function createParagraph(paragraph) {
+        let container = document.createElement('div');
+
+        let title = document.createElement('h2');
+        title.textContent = paragraph.title
+
+        let content = document.createElement('p');
+        content.textContent = paragraph.content;
+
+        container.appendChild(title);
+        container.appendChild(content);
+
+        return container;
+    }
+
+    function createButton(id, text) {
+        let button = document.createElement("button");
+        button.textContent = text;
+        button.id = id;
+
+        return button;
+    }
+
+    function acceptButtonIsClicked() {
+        return new Promise(function (resolve, reject) {
+            let acceptButton = document.getElementById("acceptButton");
+            acceptButton.addEventListener("click", resolve);
+        });
+    }
+
+    async function acceptTermsOfUse() {
+        await acceptButtonIsClicked();
+    }
+
+    function loadImage(imageUrl){
+        return new Promise(function (resolve, reject) {
+            const image = new Image();
+
+            image.addEventListener("load", () => {
+                resolve(image);
+            });
+            image.src = imageUrl;
+        });
+    }
+
+    function createCanvas(height, width, id) {
+        let canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.id = id;
+
+        return canvas;
+    }
+
+    async function downloadImage(imageUrl) {
+        const response = await fetch(imageUrl);
+        const blobImage = await response.blob();
+        const href = URL.createObjectURL(blobImage);
+
+        const anchorElement = document.createElement('a');
+        anchorElement.href = href;
+        anchorElement.download = "image.png";
+
+        document.body.appendChild(anchorElement);
+        anchorElement.click();
+
+        document.body.removeChild(anchorElement);
+        window.URL.revokeObjectURL(href);
+    }
+
+    function createLoadButton(imageUrl) {
+        let loadButton = createButton("downloadBut" + imageUrl, "Download");
+        loadButton.addEventListener("click", async function () {
+            await downloadImage(PROXY + imageUrl);
+        });
+
+        return loadButton;
+    }
+
+    async function createCanvasWithImage(imageUrl) {
+        let image = await loadImage(imageUrl);
+        let canvas = createCanvas(image.height, image.width, "canvas" + imageUrl);
+        let context = canvas.getContext('2d');
+        context.drawImage(image, 0, 0);
+
+        return canvas;
+    } 
+
+    async function renderImageToCanvasWithDownloadButton(imageUrl) {
+        let container = document.createElement('div');
+        
+        container.appendChild(await createCanvasWithImage(imageUrl));
+        container.appendChild(createLoadButton(imageUrl));
+
+        document.body.appendChild(container);
+    }
+
+    async function renderImages(images){
+        images.forEach(async (image) => {
+            await renderImageToCanvasWithDownloadButton(REMOTE_HOST + image.image_url);
+        });
+    }
+
+    let data = await fetchData();
+
+    renderTermsOfUse(data.terms_of_use.paragraphs);
+    await acceptTermsOfUse()
+
+    document.body.innerHTML = "";
+
+    await renderImages(data.images);
+
+</script>
